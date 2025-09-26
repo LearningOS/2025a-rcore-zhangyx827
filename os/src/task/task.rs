@@ -1,11 +1,13 @@
 //! Types related to task management
+
 use super::TaskContext;
 use crate::config::TRAP_CONTEXT_BASE;
 use crate::mm::{
-    kernel_stack_position, MapPermission, MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE,
+    kernel_stack_position, MapPermission, MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE
 };
 use crate::trap::{trap_handler, TrapContext};
-
+use crate::syscall::{SYSCALL_EXIT, SYSCALL_GET_TIME, SYSCALL_MMAP, SYSCALL_MUNMAP, SYSCALL_SBRK, SYSCALL_TRACE,
+SYSCALL_WRITE, SYSCALL_YIELD};
 /// The task control block (TCB) of a task.
 pub struct TaskControlBlock {
     /// Save task context
@@ -28,6 +30,9 @@ pub struct TaskControlBlock {
 
     /// Program break
     pub program_brk: usize,
+
+    /// Syscall counter
+    pub syscall_cnt: CountSyscall,
 }
 
 impl TaskControlBlock {
@@ -55,6 +60,7 @@ impl TaskControlBlock {
             kernel_stack_top.into(),
             MapPermission::R | MapPermission::W,
         );
+        let new_syscall_cnt = CountSyscall::zero_init();
         let task_control_block = Self {
             task_status,
             task_cx: TaskContext::goto_trap_return(kernel_stack_top),
@@ -63,6 +69,7 @@ impl TaskControlBlock {
             base_size: user_sp,
             heap_bottom: user_sp,
             program_brk: user_sp,
+            syscall_cnt: new_syscall_cnt,
         };
         // prepare TrapContext in user space
         let trap_cx = task_control_block.get_trap_cx();
@@ -109,4 +116,64 @@ pub enum TaskStatus {
     Running,
     /// exited
     Exited,
+}
+
+
+#[derive(Copy, Clone)]
+pub struct CountSyscall {
+    cnt_write: isize,
+    cnt_exit: isize,
+    cnt_yield: isize,
+    cnt_gettime: isize,
+    cnt_trace: isize,
+    cnt_mmap: isize,
+    cnt_munmap: isize,
+    cnt_sbrk: isize,
+}
+
+impl CountSyscall {
+    /// moidify the syscall_count
+    pub fn modify_cnt(&mut self, syscall_id: usize) {
+        match syscall_id {
+            SYSCALL_WRITE => self.cnt_write += 1,
+            SYSCALL_EXIT => self.cnt_exit += 1,
+            SYSCALL_YIELD => self.cnt_yield += 1,
+            SYSCALL_GET_TIME => self.cnt_gettime += 1,
+            SYSCALL_TRACE => self.cnt_trace += 1,
+            SYSCALL_MMAP => self.cnt_mmap += 1,
+            SYSCALL_MUNMAP => self.cnt_munmap += 1,
+            SYSCALL_SBRK => self.cnt_sbrk += 1,
+            _ => panic!("Unsupported syscall_id: {}", syscall_id),
+        };
+    }
+
+    /// get the syscall_count
+    pub fn get_cnt(&self, syscall_id: usize) -> isize {
+        match syscall_id {
+            SYSCALL_WRITE => return self.cnt_write,
+            SYSCALL_EXIT => return self.cnt_exit,
+            SYSCALL_YIELD => return self.cnt_yield,
+            SYSCALL_GET_TIME => return self.cnt_gettime,
+            SYSCALL_TRACE => return self.cnt_trace,
+            SYSCALL_MMAP => return self.cnt_mmap,
+            SYSCALL_MUNMAP => return self.cnt_munmap,
+            SYSCALL_SBRK => return self.cnt_sbrk,
+            _ => {return -1 as isize;}
+        };
+
+    }
+    /// initialize the count 
+    /// of the syscall to be zero
+    pub fn zero_init() -> Self {
+        Self {
+            cnt_exit: 0,
+            cnt_gettime: 0,
+            cnt_trace: 0,
+            cnt_write: 0,
+            cnt_yield: 0,
+            cnt_mmap: 0,
+            cnt_munmap: 0,
+            cnt_sbrk: 0,
+        }
+    }   
 }

@@ -14,7 +14,9 @@ mod switch;
 #[allow(clippy::module_inception)]
 mod task;
 
+
 use crate::loader::{get_app_data, get_num_app};
+use crate::mm::{MapArea, VirtPageNum};
 use crate::sync::UPSafeCell;
 use crate::trap::TrapContext;
 use alloc::vec::Vec;
@@ -125,7 +127,17 @@ impl TaskManager {
         let inner = self.inner.exclusive_access();
         inner.tasks[inner.current_task].get_trap_cx()
     }
-
+    /// Map the current 'Running' task's memory 
+    fn map_current_page(&self, map_area: MapArea) -> isize {
+        let mut inner = self.inner.exclusive_access();
+        let current_task = inner.current_task;
+        inner.tasks[current_task].memory_set.try_push(map_area)
+    }
+    fn unmap_current_page(&self, start_vpn: VirtPageNum, len: usize) -> isize {
+        let mut inner = self.inner.exclusive_access();
+        let current_task = inner.current_task;
+        inner.tasks[current_task].memory_set.try_unmap(start_vpn, len)
+    }
     /// Change the current 'Running' task's program break
     pub fn change_current_program_brk(&self, size: i32) -> Option<usize> {
         let mut inner = self.inner.exclusive_access();
@@ -153,6 +165,33 @@ impl TaskManager {
             panic!("All applications completed!");
         }
     }
+    /// modify the syscall count of the 
+    /// specific task
+    fn modify_cnt(&self, syscall_id: usize) {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].syscall_cnt.modify_cnt(syscall_id);
+    }
+
+    /// get the syscall count of the 
+    /// specific task 
+    fn get_cnt(&self, syscall_id: usize) -> isize {
+        let inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].syscall_cnt.get_cnt(syscall_id)
+    }
+}
+
+/// modify the syscall count of 
+/// the specific task
+pub fn modify_cnt(syscall_id: usize) {
+    TASK_MANAGER.modify_cnt(syscall_id);
+}
+
+/// get the syscall count 
+/// of the specific task
+pub fn get_cnt(syscall_id: usize) -> isize {
+    return TASK_MANAGER.get_cnt(syscall_id);
 }
 
 /// Run the first task in task list.
@@ -201,4 +240,14 @@ pub fn current_trap_cx() -> &'static mut TrapContext {
 /// Change the current 'Running' task's program break
 pub fn change_program_brk(size: i32) -> Option<usize> {
     TASK_MANAGER.change_current_program_brk(size)
+}
+
+/// Map the current 'Running' task's page
+pub fn map_current_page(map_area: MapArea) -> isize {
+    TASK_MANAGER.map_current_page(map_area)
+}
+
+/// Unmap the current 'Running' task's page
+pub fn unmap_current_page(start_vpn: VirtPageNum, len: usize) -> isize {
+    TASK_MANAGER.unmap_current_page(start_vpn, len)
 }

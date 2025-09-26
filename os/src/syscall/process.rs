@@ -44,6 +44,7 @@ pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
         .get_bytes_array();
     let end_va_sec = va + core::mem::size_of::<usize>();
     let mut mask = 0b11111111;
+    let mut i = 0;
     while va < end_va_sec {
         if va / PAGE_SIZE != page_start / PAGE_SIZE {
             page_start += PAGE_SIZE;
@@ -53,12 +54,14 @@ pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
                 .ppn()
                 .get_bytes_array();
         }
-        bytes_array[va & (PAGE_SIZE - 1)] = (sec & mask) as u8;
+        bytes_array[va & (PAGE_SIZE - 1)] = ((sec & mask) >> (i * 8)) as u8;
         mask <<= 8;
         va += 1;
+        i += 1;
     }
 
     mask = 0b11111111;
+    i = 0;
     let end_va_usec = end_va_sec + core::mem::size_of::<usize>();
     while va < end_va_usec {
         if va / PAGE_SIZE != page_start / PAGE_SIZE {
@@ -69,9 +72,10 @@ pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
                 .ppn()
                 .get_bytes_array();
         }
-        bytes_array[va & (PAGE_SIZE - 1)] = (usec & mask) as u8;
+        bytes_array[va & (PAGE_SIZE - 1)] = ((usec & mask) >> (i * 8)) as u8;
         mask <<= 8;
         va += 1;
+        i += 1;
     }
     0
 }

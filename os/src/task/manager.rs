@@ -9,6 +9,7 @@ pub struct TaskManager {
     ready_queue: VecDeque<Arc<TaskControlBlock>>,
 }
 
+
 /// A simple FIFO scheduler.
 impl TaskManager {
     ///Creat an empty TaskManager
@@ -23,7 +24,16 @@ impl TaskManager {
     }
     /// Take a process out of the ready queue
     pub fn fetch(&mut self) -> Option<Arc<TaskControlBlock>> {
-        self.ready_queue.pop_front()
+        let mut min = 0;
+        let mut ind = 0;
+        for (i, b) in self.ready_queue.iter().enumerate() {
+            let task_inner = b.inner_exclusive_access();
+            if task_inner.stride <= min {
+                min = task_inner.stride;
+                ind = i;
+            }
+        }
+        self.ready_queue.remove(ind)
     }
 }
 

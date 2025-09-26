@@ -1,6 +1,7 @@
 # Building
 TARGET := riscv64gc-unknown-none-elf
-MODE := release
+# MODE := release
+MODE := debug
 KERNEL_ELF := target/$(TARGET)/$(MODE)/os
 KERNEL_BIN := $(KERNEL_ELF).bin
 DISASM_TMP := target/$(TARGET)/$(MODE)/asm
@@ -80,7 +81,10 @@ debug: build
 gdbserver: build
 	@qemu-system-riscv64 -machine virt -nographic -bios $(BOOTLOADER) -device loader,file=$(KERNEL_BIN),addr=$(KERNEL_ENTRY_PA) -s -S
 
-gdbclient:
-	@riscv64-unknown-elf-gdb -ex 'file $(KERNEL_ELF)' -ex 'set arch riscv:rv64' -ex 'target remote localhost:1234'
+gdbclient_init:
+	@/home/zyx/Downloads/riscv-binutils-gdb-riscv-binutils-2.36.1/build/gdb/gdb -ex 'file $(KERNEL_ELF)' -ex 'set arch riscv:rv64' -ex 'target remote localhost:1234' -x init.gdb
 
-.PHONY: build env kernel clean disasm disasm-vim run-inner gdbserver gdbclient
+gdbclient:
+	@/home/zyx/Downloads/riscv-binutils-gdb-riscv-binutils-2.36.1/build/gdb/gdb -ex 'file $(KERNEL_ELF)' -ex 'set arch riscv:rv64' -ex 'target remote localhost:1234'
+
+.PHONY: build env kernel clean disasm disasm-vim run-inner gdbserver gdbclient gdbclient_init

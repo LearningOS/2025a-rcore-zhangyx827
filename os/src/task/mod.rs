@@ -21,7 +21,7 @@ mod switch;
 #[allow(clippy::module_inception)]
 mod task;
 
-use crate::loader::get_app_data_by_name;
+use crate::{loader::get_app_data_by_name, mm::{MapArea, VirtPageNum}};
 use alloc::sync::Arc;
 use lazy_static::*;
 pub use manager::{fetch_task, TaskManager};
@@ -100,7 +100,19 @@ pub fn exit_current_and_run_next(exit_code: i32) {
     let mut _unused = TaskContext::zero_init();
     schedule(&mut _unused as *mut _);
 }
-
+/// map the current 'Running' process's pages
+pub fn map_current_page(map_area: MapArea) -> isize {
+    let task = current_task().unwrap();
+    let mut task_inner = task.inner_exclusive_access();
+    task_inner.memory_set.try_push(map_area)
+}
+/// unmap the current 'Running process's pages
+pub fn unmap_current_page(start_vpn: VirtPageNum, len: usize) -> isize {
+    // let mut inner = self.inner.exclusive_access();
+    let task = current_task().unwrap();
+    let mut task_inner = task.inner_exclusive_access();
+    task_inner.memory_set.try_unmap(start_vpn, len)
+}
 lazy_static! {
     /// Creation of initial process
     ///

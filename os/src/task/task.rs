@@ -9,6 +9,8 @@ use alloc::sync::{Arc, Weak};
 use alloc::vec::Vec;
 use core::cell::RefMut;
 
+
+
 /// Task control block structure
 ///
 /// Directly save the contents that will not change during running
@@ -23,6 +25,7 @@ pub struct TaskControlBlock {
     /// Mutable
     inner: UPSafeCell<TaskControlBlockInner>,
 }
+
 
 impl TaskControlBlock {
     /// Get the mutable reference of the inner TCB
@@ -68,6 +71,12 @@ pub struct TaskControlBlockInner {
 
     /// Program break
     pub program_brk: usize,
+
+    /// Priority
+    pub prio: isize,
+
+    /// Stride
+    pub stride: u64,
 }
 
 impl TaskControlBlockInner {
@@ -118,6 +127,8 @@ impl TaskControlBlock {
                     exit_code: 0,
                     heap_bottom: user_sp,
                     program_brk: user_sp,
+                    stride: 0,
+                    prio: 16,
                 })
             },
         };
@@ -191,6 +202,8 @@ impl TaskControlBlock {
                     exit_code: 0,
                     heap_bottom: parent_inner.heap_bottom,
                     program_brk: parent_inner.program_brk,
+                    prio: 16,
+                    stride: 0,
                 })
             },
         });

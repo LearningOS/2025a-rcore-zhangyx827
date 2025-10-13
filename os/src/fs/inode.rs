@@ -124,6 +124,18 @@ pub fn open_file(name: &str, flags: OpenFlags) -> Option<Arc<OSInode>> {
         })
     }
 }
+/// create a new hardlink
+pub fn linkat(old_name: &str, new_name: &str) -> isize {
+    if old_name == new_name {
+        return -1;
+    }
+    ROOT_INODE.linkat(old_name, new_name)    
+}
+
+/// Delete a hardlinke
+pub fn unlinkat(name: &str) -> isize {
+    ROOT_INODE.unlinkat(name)
+}
 
 impl File for OSInode {
     fn readable(&self) -> bool {

@@ -1,6 +1,6 @@
 //! File and filesystem-related syscalls
-use crate::fs::{open_file, OpenFlags, Stat, linkat, unlinkat};
-use crate::mm::{translated_byte_buffer, translated_str, UserBuffer};
+use crate::fs::{linkat, open_file, unlinkat, OpenFlags, Stat};
+use crate::mm::{translated_byte_buffer, translated_refmut, translated_str, UserBuffer};
 use crate::task::{current_task, current_user_token};
 
 pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
@@ -76,12 +76,25 @@ pub fn sys_close(fd: usize) -> isize {
 }
 
 /// YOUR JOB: Implement fstat.
-pub fn sys_fstat(_fd: usize, _st: *mut Stat) -> isize {
+pub fn sys_fstat(fd: usize, st: *mut Stat) -> isize {
     trace!(
         "kernel:pid[{}] sys_fstat NOT IMPLEMENTED",
         current_task().unwrap().pid.0
     );
-    -1
+    let task = current_task().unwrap();
+    let inner = task.inner_exclusive_access();
+    if let Some(inode) = &inner.fd_table[fd] {
+        let token = inner.memory_set.token();
+        let ptr = translated_refmut(token, st);
+        let stat = inode.stat();
+        ptr.dev = stat.dev;
+        ptr.ino = stat.dev;
+        ptr.mode = stat.mode;
+        ptr.nlink = stat.nlink;
+        0
+    } else {
+        return -1;
+    }
 }
 
 /// YOUR JOB: Implement linkat.

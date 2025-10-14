@@ -22,7 +22,7 @@ mod switch;
 #[allow(rustdoc::private_intra_doc_links)]
 mod task;
 
-use crate::fs::{open_file, OpenFlags};
+use crate::{fs::{open_file, OpenFlags}, mm::{MapArea, VirtPageNum}};
 use alloc::sync::Arc;
 pub use context::TaskContext;
 use lazy_static::*;
@@ -102,6 +102,19 @@ pub fn exit_current_and_run_next(exit_code: i32) {
     // we do not have to save task context
     let mut _unused = TaskContext::zero_init();
     schedule(&mut _unused as *mut _);
+}
+/// map the current 'Running' process's pages
+pub fn map_current_page(map_area: MapArea) -> isize {
+    let task = current_task().unwrap();
+    let mut task_inner = task.inner_exclusive_access();
+    task_inner.memory_set.try_push(map_area)
+}
+/// unmap the current 'Running process's pages
+pub fn unmap_current_page(start_vpn: VirtPageNum, len: usize) -> isize {
+    // let mut inner = self.inner.exclusive_access();
+    let task = current_task().unwrap();
+    let mut task_inner = task.inner_exclusive_access();
+    task_inner.memory_set.try_unmap(start_vpn, len)
 }
 
 lazy_static! {

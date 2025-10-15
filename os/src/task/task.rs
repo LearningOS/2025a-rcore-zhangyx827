@@ -46,6 +46,10 @@ pub struct TaskControlBlockInner {
     pub lock_earning: Option<usize>,
     /// earning locks
     pub locks_holding: Vec<usize>,
+    /// holding sem
+    pub holding_sem: Vec<usize>,
+    /// earning sem
+    pub earning_sem: Option<usize>,
 }
 
 impl TaskControlBlockInner {
@@ -82,6 +86,8 @@ impl TaskControlBlock {
                     exit_code: None,
                     lock_earning: None,
                     locks_holding: Vec::new(),
+                    earning_sem: None,
+                    holding_sem: Vec::new(),
                 })
             },
         }

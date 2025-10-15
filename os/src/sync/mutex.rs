@@ -154,7 +154,7 @@ impl Mutex for MutexBlocking {
             for task_opt in process_inner.tasks.iter() {
                 if let Some(task) = task_opt {
                     let task_inner = task.inner_exclusive_access();
-                    if task_inner.res.as_ref().unwrap().tid == current_tid {
+                    if task_inner.res.is_some() && task_inner.res.as_ref().unwrap().tid == current_tid {
                         if let Some(_mid) = task_inner.locks_holding.iter().find(|&&mid| mid == mutex_id) {
                             return -0xDEAD;
                             // can not acquire the lock already held
@@ -169,13 +169,12 @@ impl Mutex for MutexBlocking {
                     }
                 }
             }
-            // suspend_current_and_run_next();
             let mut current_inner = cur_task.inner_exclusive_access();
             current_inner.lock_earning = Some(mutex_id);
             mutex_inner.wait_queue.push_back(current_task().unwrap());
-            drop(mutex_inner);
             drop(current_inner);
             drop(process_inner);
+            drop(mutex_inner);
             block_current_and_run_next();
             0
         } else {

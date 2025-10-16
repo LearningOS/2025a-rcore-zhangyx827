@@ -13,52 +13,56 @@
 在我们的多线程实现中，当主线程 (即 0 号线程) 退出时，视为整个进程退出， 此时需要结束该进程管理的所有线程并回收其资源。 - 需要回收的资源有哪些？ - 其他线程的 TaskControlBlock 可能在哪些位置被引用，分别是否需要回收，为什么？
 - 资源包括tid, trap_cx, 线程的用户栈和内核栈，trap上下文的页面所占用的物理空间.
 - 可能在`PROCESSOR`的`ready_queue`,  `TIMERS`, 以及锁和信号量的`wait_queue`中。
-在`ready_queue`, 与 `TIMERS` 中的线程需要被回收，因为
+在`ready_queue`, 与 `TIMERS` 中的线程需要被回收，因为它们两个不是进程级别的，如果不回收会导致内存泄漏。 
+在锁和信号量的`wait_queue`中的不需要手动回收，因为这属于进程级别的，在`ProcessControlBlock`被回收之后，自然会被回收
 对比以下两种 Mutex 中的实现，二者有什么区别？这些区别可能会导致什么问题？
- 1impl Mutex for Mutex1 {
- 2    fn lock(&self) {
- 3        loop {
- 4            let mut mutex_inner = self.inner.exclusive_access();
- 5            if mutex_inner.locked {
- 6                mutex_inner.wait_queue.push_back(current_task().unwrap());
- 7                drop(mutex_inner);
- 8                block_current_and_run_next();
- 9            } else {
-10                mutex_inner.locked = true;
-11                break;
-12            }
-13        }
-14    }
-15
-16    fn unlock(&self) {
-17        let mut mutex_inner = self.inner.exclusive_access();
-18        assert!(mutex_inner.locked);
-19        mutex_inner.locked = false;
-20        if let Some(waking_task) = mutex_inner.wait_queue.pop_front() {
-21            add_task(waking_task);
-22        }
-23    }
-24}
-25
-26impl Mutex for Mutex2 {
-27    fn lock(&self) {
-28        let mut mutex_inner = self.inner.exclusive_access();
-29        if mutex_inner.locked {
-30            mutex_inner.wait_queue.push_back(current_task().unwrap());
-31            drop(mutex_inner);
-32            block_current_and_run_next();
-33        } else {
-34            mutex_inner.locked = true;
-35        }
-36    }
-37
-38    fn unlock(&self) {
-39        let mut mutex_inner = self.inner.exclusive_access();
-40        assert!(mutex_inner.locked);
-41        if let Some(waking_task) = mutex_inner.wait_queue.pop_front() {
-42            add_task(waking_task);
-43        } else {
-44            mutex_inner.locked = false;
-45        }
-46    }
-47}
+
+impl Mutex for Mutex1 {
+    fn lock(&self) {
+        loop {
+            let mut mutex_inner = self.inner.exclusive_access();
+            if mutex_inner.locked {
+                mutex_inner.wait_queue.push_back(current_task().unwrap());
+                drop(mutex_inner);
+                block_current_and_run_next();
+            } else {
+                mutex_inner.locked = true;
+                break;
+            }
+        }
+    }
+
+    fn unlock(&self) {
+        let mut mutex_inner = self.inner.exclusive_access();
+        assert!(mutex_inner.locked);
+        mutex_inner.locked = false;
+        if let Some(waking_task) = mutex_inner.wait_queue.pop_front() {
+            add_task(waking_task);
+        }
+    }
+}
+
+impl Mutex for Mutex2 {
+    fn lock(&self) {
+        let mut mutex_inner = self.inner.exclusive_access();
+        if mutex_inner.locked {
+            mutex_inner.wait_queue.push_back(current_task().unwrap());
+            drop(mutex_inner);
+            block_current_and_run_next();
+        } else {
+            mutex_inner.locked = true;
+        }
+    }
+
+    fn unlock(&self) {
+        let mut mutex_inner = self.inner.exclusive_access();
+        assert!(mutex_inner.locked);
+        if let Some(waking_task) = mutex_inner.wait_queue.pop_front() {
+            add_task(waking_task);
+        } else {
+            mutex_inner.locked = false;
+        }
+    }
+}
+
+区别在于第二种实现先判断`wait_queue`是否为空，如果不为空直接转移锁的所有者

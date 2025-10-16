@@ -2,7 +2,7 @@ use crate::sync::{Condvar, Mutex, MutexBlocking, MutexSpin, Semaphore};
 use crate::task::{block_current_and_run_next, current_process, current_task};
 use crate::timer::{add_timer, get_time_ms};
 use alloc::sync::Arc;
-static mut ENABLE: bool = false;
+
 
 /// sleep syscall
 pub fn sys_sleep(ms: usize) -> isize {
@@ -73,15 +73,17 @@ pub fn sys_mutex_lock(mutex_id: usize) -> isize {
     let process = current_process();
     let process_inner = process.inner_exclusive_access();
     let mutex = Arc::clone(process_inner.mutex_list[mutex_id].as_ref().unwrap());
+    // unsafe {
+    if process_inner.enable_detect {
+        drop(process_inner);
+        drop(process);
+        return mutex.try_lock(mutex_id);
+    }
     drop(process_inner);
     drop(process);
-    unsafe {
-        if ENABLE {
-            return mutex.try_lock(mutex_id);
-        }
-        mutex.lock();
-        0
-    }
+    mutex.lock();
+    0
+    // }
 }
 /// mutex unlock syscall
 pub fn sys_mutex_unlock(mutex_id: usize) -> isize {
@@ -99,15 +101,17 @@ pub fn sys_mutex_unlock(mutex_id: usize) -> isize {
     let process = current_process();
     let process_inner = process.inner_exclusive_access();
     let mutex = Arc::clone(process_inner.mutex_list[mutex_id].as_ref().unwrap());
-    drop(process_inner);
-    drop(process);
-    unsafe  {
-        if ENABLE {
-            mutex.unlock_mid(mutex_id);
-        } else {
-            mutex.unlock();
-        }
+    // unsafe  {
+    if process_inner.enable_detect {
+        drop(process_inner);
+        drop(process);
+        mutex.unlock_mid(mutex_id);
+    } else {
+        drop(process_inner);
+        drop(process);
+        mutex.unlock();
     }
+    // }
     0
 }
 /// semaphore create syscall
@@ -158,8 +162,13 @@ pub fn sys_semaphore_up(sem_id: usize) -> isize {
     let process = current_process();
     let process_inner = process.inner_exclusive_access();
     let sem = Arc::clone(process_inner.semaphore_list[sem_id].as_ref().unwrap());
-    drop(process_inner);
-    sem.up();
+    if process_inner.enable_detect {
+        drop(process_inner);
+        sem.up_semid(sem_id);
+    } else {
+        drop(process_inner);
+        sem.up();
+    }
     0
 }
 /// semaphore down syscall
@@ -178,15 +187,16 @@ pub fn sys_semaphore_down(sem_id: usize) -> isize {
     let process = current_process();
     let process_inner = process.inner_exclusive_access();
     let sem = Arc::clone(process_inner.semaphore_list[sem_id].as_ref().unwrap());
-    drop(process_inner);
-    unsafe {
-        if ENABLE {
-            sem.try_down(sem_id)
-        } else {
-            sem.down();
-            0
-        }
+    // unsafe {
+    if process_inner.enable_detect {
+        drop(process_inner);
+        sem.try_down(sem_id)
+    } else {
+        drop(process_inner);
+        sem.down();
+        0
     }
+    // }
 }
 /// condvar create syscall
 pub fn sys_condvar_create() -> isize {
@@ -266,6 +276,9 @@ pub fn sys_condvar_wait(condvar_id: usize, mutex_id: usize) -> isize {
 /// YOUR JOB: Implement deadlock detection, but might not all in this syscall
 pub fn sys_enable_deadlock_detect(enabled: usize) -> isize {
     trace!("kernel: sys_enable_deadlock_detect NOT IMPLEMENTED");
-    unsafe { ENABLE = enabled != 0; }
+    // unsafe { ENABLE = enabled != 0; }
+    let process = current_process();
+    let mut process_inner = process.inner_exclusive_access();
+    process_inner.enable_detect = enabled != 0;
     0
 }

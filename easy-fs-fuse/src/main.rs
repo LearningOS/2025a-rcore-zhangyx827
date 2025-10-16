@@ -95,10 +95,10 @@ fn efs_test() -> std::io::Result<()> {
             .write(true)
             .create(true)
             .open("target/fs.img")?;
-        f.set_len(8192 * 512).unwrap();
+        f.set_len(256 * 2048 * 512).unwrap();
         f
     })));
-    EasyFileSystem::create(block_file.clone(), 4096, 1);
+    EasyFileSystem::create(block_file.clone(), 256 * 2048, 3);
     let efs = EasyFileSystem::open(block_file.clone());
     let root_inode = EasyFileSystem::root_inode(&efs);
     root_inode.create("filea");

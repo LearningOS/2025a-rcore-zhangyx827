@@ -43,13 +43,9 @@ pub struct TaskControlBlockInner {
     /// It is set when active exit or execution error occurs
     pub exit_code: Option<i32>,
     /// holding lock
-    pub lock_earning: Option<usize>,
+    pub res_earning: Option<usize>,
     /// earning locks
-    pub locks_holding: Vec<usize>,
-    /// holding sem
-    pub holding_sem: Vec<usize>,
-    /// earning sem
-    pub earning_sem: Option<usize>,
+    pub res_holding: Vec<usize>,
 }
 
 impl TaskControlBlockInner {
@@ -84,10 +80,8 @@ impl TaskControlBlock {
                     task_cx: TaskContext::goto_trap_return(kstack_top),
                     task_status: TaskStatus::Ready,
                     exit_code: None,
-                    lock_earning: None,
-                    locks_holding: Vec::new(),
-                    earning_sem: None,
-                    holding_sem: Vec::new(),
+                    res_earning: None,
+                    res_holding: Vec::new(),
                 })
             },
         }

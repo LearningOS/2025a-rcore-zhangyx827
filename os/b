@@ -1,0 +1,7 @@
+break /home/zyx/OS/2025a-rcore-zhangyx827/os/src/sync/semaphore.rs:86
+break /home/zyx/OS/2025a-rcore-zhangyx827/os/src/sync/semaphore.rs:116
+break /home/zyx/OS/2025a-rcore-zhangyx827/os/src/sync/semaphore.rs:99
+break /home/zyx/OS/2025a-rcore-zhangyx827/os/src/sync/mod.rs:70
+break /home/zyx/OS/2025a-rcore-zhangyx827/os/src/sync/mod.rs:72
+break /home/zyx/OS/2025a-rcore-zhangyx827/os/src/sync/semaphore.rs:111
+break /home/zyx/OS/2025a-rcore-zhangyx827/os/src/sync/semaphore.rs:103

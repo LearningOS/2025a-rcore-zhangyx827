@@ -66,10 +66,8 @@ impl Mutex for MutexSpin {
                     drop(process_inner);
                     drop(_locked);
                     suspend_current_and_run_next();
-                    // return 0;
                 } else {
                     drop(process_inner);
-                    // drop(locked);
                     return -0xDEAD;
                 }
             } else {
